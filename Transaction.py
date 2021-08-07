@@ -106,10 +106,17 @@ if __name__ == "__main__":
     Tx5 = Tx()
     Tx5.add_input(pu3, 1.2)
     Tx5.add_output(pu1, 1.1)
-    Tx3.add_Req_Signatures(pu4)
+    Tx5.add_Req_Signatures(pu4)
     Tx5.signature(pr3)
     
-    for t in [Tx4, Tx5]:
+    #Modified Tx
+    Tx6 = Tx()
+    Tx6.add_input(pu1, 1)
+    Tx6.add_output(pu2, 1)
+    Tx6.signature(pr1)
+    Tx6.outputs[0]=(pu3, 1)
+    
+    for t in [Tx4, Tx5, Tx6]:
         if t.is_Valid():
             print("Succeed")
         else:
