@@ -11,4 +11,4 @@ Blockchain and cryptocurrency using Python
   7. Hardness and emission rate
   8. Blockchain based transaction ledger
  
- Before each, you need to check your python version (up to 3) and install cryptography library with <b><i>pip install cryptography</i></b>
+ Before each, you need to check your python version (greater than or equal to 3) and install cryptography library with <b><i>pip install cryptography</i></b>
