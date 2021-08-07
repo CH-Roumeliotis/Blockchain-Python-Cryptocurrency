@@ -23,7 +23,10 @@ class Tx:
         newsig = Signatures.sign(message, private)
         self.signatures.append(newsig)
     def is_Valid(self):
+        total_in = 0
+        total_out = 0
         message = self.__gather()
+        
         for addr,amount in self.inputs:
             found = False
             for s in self.signatures:
@@ -31,6 +34,25 @@ class Tx:
                     found = True
             if not found:
                 return False
+            if amount<0:
+                return False
+            total_in = total_in + amount
+            
+        for addr in self.requiresSigns:
+            found = False
+            for s in self.signatures:
+                if Signatures.verify(message, s, addr):
+                    found = True
+            if not found:
+                return False
+        for addr,amount in self.outputs:
+            if amount<0:
+                return False
+            total_out = total_out + amount
+
+        if total_out > total_in:
+            return False
+        
         return True
     def __gather(self):
         data = []
@@ -39,6 +61,7 @@ class Tx:
         data.append(self.requiresSigns)
         return data
 
+#some tests
 if __name__ == "__main__":
     pr1, pu1 = Signatures.generate_keys()
     pr2, pu2 = Signatures.generate_keys()
