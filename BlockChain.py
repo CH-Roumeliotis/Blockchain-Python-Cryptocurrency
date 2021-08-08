@@ -25,8 +25,12 @@ class RBlock:
         digest.update(bytes(str(self.data), 'utf8'))
         digest.update(bytes(str(self.previousHash), 'utf8'))
         return digest.finalize()
+    def is_Valid(self):
+        if self.previous == None:
+            return True
+        return self.previous.computeHash() == self.previousHash
 
-#Lets check this out
+#Blockchain unit tests
 if __name__ == '__main__':
     root = RBlock('I am Rrr', None)
     B1 = RBlock(b'Rrrrr', root)
