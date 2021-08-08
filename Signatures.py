@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import serialization
 
 def generate_keys():
     private = rsa.generate_private_key(
@@ -13,10 +14,14 @@ def generate_keys():
         key_size = 2048,
         backend = default_backend())
     public = private.public_key()
-    return private, public
+    pu_ser = public.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    return private, pu_ser
 
 def sign(message, private):
-    message = bytes(str(message), 'utf8')
+    message = bytes(str(message), 'utf-8')
     signature = private.sign(
         message,
         padding.PSS(
@@ -27,8 +32,12 @@ def sign(message, private):
     )
     return signature
 
-def verify(message, signature, public):
-    message = bytes(str(message), 'utf8')
+def verify(message, signature, pu_ser):
+    public = serialization.load_pem_public_key(
+        pu_ser,
+        backend = default_backend()
+    )
+    message = bytes(str(message), 'utf-8')
     try:
         public.verify(
             signature,
