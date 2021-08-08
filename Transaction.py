@@ -60,6 +60,22 @@ class Tx:
         data.append(self.outputs)
         data.append(self.requiresSigns)
         return data
+    def __repr__(self):
+        reprstr = "INPUTS:\n"
+        for addr,amt in self.inputs:
+            reprstr = reprstr + str(amt) + " from " + str(addr) + "\n"
+        reprstr = reprstr + "OUTPUT:\n"
+        for addr,amt in self.outputs:
+            reprstr = reprstr + str(amt) + " to " + str(addr) + "\n"
+        reprstr = reprstr + "REGUIRE-SIGNATURES:\n"
+        for r in self.requiresSigns:
+            reprstr = reprstr + str(r) + "\n"
+        reprstr = reprstr + "SIGNATURES:\n"
+        for s in self.signatures:
+            reprstr = reprstr + str(s) + "\n"
+        reprstr = reprstr = "END\n"
+        return reprstr
+            
 
 #some tests
 if __name__ == "__main__":
