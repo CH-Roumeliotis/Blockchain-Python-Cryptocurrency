@@ -73,7 +73,7 @@ class Tx:
         reprstr = reprstr + "SIGNATURES:\n"
         for s in self.signatures:
             reprstr = reprstr + str(s) + "\n"
-        reprstr = reprstr = "END\n"
+        reprstr = reprstr + "END\n"
         return reprstr
             
 

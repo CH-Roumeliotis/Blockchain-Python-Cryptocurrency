@@ -13,6 +13,9 @@ class TxBlock(RBlock):
     def is_Valid(self):
         if not super(TxBlock, self).is_Valid():
             return False
+        for tx in self.data:
+            if not tx.is_Valid():
+                return False
         return True
 if __name__ == "__main__":
     pr1, pu1 = generate_keys()
@@ -95,6 +98,8 @@ if __name__ == "__main__":
 
     load_B1.is_Valid
 
+    print(bytes(str(load_B1.data), 'utf8'))
+
     for b in [root, B1, load_B1, load_B1.previous]:
         if b.is_Valid():
             print("Success, Valid Block")
@@ -106,11 +111,14 @@ if __name__ == "__main__":
     Tx5.add_input(pu3, 1)
     Tx5.add_output(pu1, 100)
     Tx5.signature(pr3)
+    B2.addTx(Tx5)
+#    print(B2.data)
+#    print(Tx5.is_Valid())
 
     load_B1.previous.addTx(Tx4)
     for b in [B2, load_B1]:
         if b.is_Valid():
             print("Error, block is not verified")
         else:
-            print("Succeed, block verified")
+            print("Succeed, unverified blocks detected")
             
