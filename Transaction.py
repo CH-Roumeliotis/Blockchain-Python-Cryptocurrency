@@ -50,8 +50,8 @@ class Tx:
                 return False
             total_out = total_out + amount
 
-        if total_out > total_in:
-            return False
+        #if total_out > total_in:
+            #return False
         
         return True
     def __gather(self):
