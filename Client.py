@@ -12,7 +12,7 @@ def sendBlock(ip_addr, block):
     s.connect((ip_addr, TCP_PORT))
     data = pickle.dumps(block)
     s.send(data)
-    #s.close()
+    s.close()
     return False
 
 if __name__ == "__main__":
@@ -41,6 +41,3 @@ if __name__ == "__main__":
     sendBlock('localhost', Tx2)
 
     sendBlock('localhost', Tx1)
-    
-    
-    
