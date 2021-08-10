@@ -36,11 +36,11 @@ if __name__ == "__main__":
     B1.addTx(Tx1)
     B1.addTx(Tx2)
 
-    sendBlock('192.168.2.111', B1)
+    sendBlock('localhost', B1)
 
-    sendBlock('192.168.2.111', Tx2)
+    sendBlock('localhost', Tx2)
 
-    sendBlock('192.168.2.111', Tx1)
+    sendBlock('localhost', Tx1)
     
     
     
