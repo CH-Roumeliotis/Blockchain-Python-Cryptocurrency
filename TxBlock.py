@@ -9,7 +9,8 @@ import random
 import time
 
 reward = 25.0 #25.0 is our block reward
-leading_zeros = 1
+leading_zeros = 2
+next_char_limit = 20
 
 class TxBlock(RBlock):
     nonce = "AAAAAAA"
@@ -42,8 +43,10 @@ class TxBlock(RBlock):
         digest.update(bytes(str(self.previousHash), 'utf8'))
         digest.update(bytes(str(self.nonce), 'utf8'))
         this_hash =  digest.finalize()
-        #print(this_hash[:leading_zeros]) + " -- " + str(bytes(''.join(['\x4f' for i in range(leading_zeros)])))
-        return this_hash[:leading_zeros] == bytes(''.join(['\x4f' for i in range(leading_zeros)]))
+
+        if this_hash[:leading_zeros] != bytes(''.join([ '\x4f' for i in range(leading_zeros)]),'utf8'):
+            return False
+        return int(this_hash[leading_zeros]) < next_char_limit
     def find_nonce(self):
         for i in range(100000):
             self.nonce = ''.join([chr(random.randint(0,255)) for i in range(10*leading_zeros)])
@@ -63,29 +66,29 @@ if __name__ == "__main__":
     if Tx1.is_Valid():
         print("Success, Tx is valid")
 
-    message = b"Some text"
-    signature = sign(message, pr1)
-    print(verify(message, signature, pu1))
+#    message = b"Some text"
+#    signature = sign(message, pr1)
+#    print(verify(message, signature, pu1))
 
-    addrFile = open("public.dat", "wb")
+#    addrFile = open("public.dat", "wb")
 #    pu_ser = pu1.public_bytes(
 #        encoding=serialization.Encoding.PEM,
 #        format=serialization.PublicFormat.SubjectPublicKeyInfo
 #    )
-    pickle.dump(pu1, addrFile)
-    addrFile.close()
+#    pickle.dump(pu1, addrFile)
+#    addrFile.close()
     saveFile = open("tx.dat", "wb")
     pickle.dump(Tx1, saveFile)
     saveFile.close()
 
-    loadFile = open("public.dat", "rb")
-    new_pu = pickle.load(loadFile)
+#    loadFile = open("public.dat", "rb")
+#    new_pu = pickle.load(loadFile)
 #    loaded_pu = serialization.load_pem_public_key(
 #        new_pu,
 #        backend = default_backend()
 #    )
-    print(verify(message, signature, new_pu))
-    loadFile.close()
+#    print(verify(message, signature, new_pu))
+#    loadFile.close()
 
     loadFile = open("tx.dat", "rb")
     newTx = pickle.load(loadFile)
@@ -125,6 +128,7 @@ if __name__ == "__main__":
     
     if elapsed < 60:
         print("ERROR, Mining is too fast")
+        
     if B1.good_nonce():
         print("Success, nonce is good")
     else:
