@@ -1,6 +1,8 @@
 # Blockchain-Python-Cryptocurrency
 Blockchain and cryptocurrency using Python
 
+https://github.com/CH-Roumeliotis/Blockchain-Python-Cryptocurrency/blob/main/WALLET.png
+
 <b>The content of this project is: </b>
   1. Digital Signatures
   2. Blockchain Network
