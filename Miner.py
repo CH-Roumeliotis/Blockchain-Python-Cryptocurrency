@@ -2,27 +2,30 @@
 import SocketUtils
 import Transaction
 import TxBlock
-import Signatures
-import threading
-import time
+import pickle
 
 wallets = [('localhost',5006)]
 tx_list = []
 head_blocks=[None]
 break_now = False
+verbose = True
+
+def StopAll():
+    global break_now
+    break_now = True
 
 def minerServer(my_addr):
     global tx_list
     global break_now
     head_blocks=[None]
     my_ip, my_port = my_addr
-    server = SocketUtils.newServerConnection(my_ip, my_port)
+    server = SocketUtils.newServerConnection(my_ip,my_port)
     # Get Transactions from wallets
     while not break_now:
         newTx = SocketUtils.recvObj(server)
         if isinstance(newTx,Transaction.Tx):
             tx_list.append(newTx)
-            print ("Received tx")
+            if verbose: print ("Received transaction")
     return False
 
 def nonceFinder(wallet_list, miner_public):
@@ -38,19 +41,42 @@ def nonceFinder(wallet_list, miner_public):
         mine_reward.add_output(miner_public,25.0+total_in-total_out)
         newBlock.addTx(mine_reward)
         # Find nonce
-        print ("Finding Nonce...")
+        if verbose: print ("Finding Nonce...")
         newBlock.find_nonce(10000)
         if newBlock.good_nonce():
-            print ("Good nonce found")
-            # Send new block
-            for ip_addr,port in wallet_list:
-                print ("Sending to " + ip_addr + ":" + str(port))
-                SocketUtils.sendBlock(ip_addr,newBlock,5006)
+            if verbose: print ("Good nonce found")
             head_blocks.remove(newBlock.previous)
             head_blocks.append(newBlock)
+            # Send new block
+            savePrev = newBlock.previous
+            newBlock.previous = None
+            for ip_addr,port in wallet_list:
+                if verbose: print ("Sending to " + ip_addr + ":" + str(port))
+                SocketUtils.sendBlock(ip_addr,newBlock,5006)
+            newBlock.previous = savePrev
+            # Remove used txs from tx_list
+            for tx in newBlock.data:
+                if tx != mine_reward:
+                    tx_list.remove(tx)
+    return True
+
+def loadTxList(filename):
+    fin = open(filename, "rb")
+    ret = pickle.load(fin)
+    fin.close()
+    return ret
+
+def saveTxList(the_list, filename):
+    fp = open(filename, "wb")
+    pickle.dump(the_list, fp)
+    fp.close()
     return True
 
 if __name__ == "__main__":
+
+    import Signatures
+    import threading
+    import time
     
     my_pr, my_pu = Signatures.generate_keys()
     t1 = threading.Thread(target=minerServer, args=(('localhost',5005),))
@@ -77,13 +103,17 @@ if __name__ == "__main__":
     Tx2.signature(pr3)
     Tx2.signature(pr1)
 
-    try:
-        SocketUtils.sendBlock('localhost',Tx1)
-        print ("Sent Tx1")
-        SocketUtils.sendBlock('localhost',Tx2)
-        print ("Sent Tx2")
-    except:
-        print ("ERROR! Connection unsuccessful")
+    new_tx_list = [Tx1, Tx2]
+    saveTxList(new_tx_list, "Txs.dat")
+    new_new_tx_list = loadTxList("Txs.dat")
+    
+
+    for tx in new_new_tx_list:
+        try:
+            SocketUtils.sendBlock('localhost',tx)
+            print ("Sent Transaction")
+        except:
+            print ("Error! Connection Fail")
 
     for i in range(30):
         newBlock = SocketUtils.recvObj(server)

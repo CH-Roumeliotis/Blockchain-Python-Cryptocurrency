@@ -2,6 +2,7 @@
 import SocketUtils
 import Transaction
 import TxBlock
+import pickle
 
 head_blocks = [None]
 wallets = [('localhost',5006)]
@@ -61,6 +62,21 @@ def sendCoins(pu_send, amt_send, pr_send, pu_recv, amt_recv, miner_list):
     SocketUtils.sendBlock('localhost',newTx)
     return True
 
+def loadKeys(pr_file, pu_file):
+    return Signatures.loadPrivate(pr_file), Signatures.loadPublic(pu_file)
+
+def saveBlocks(block_list, filename):
+    fp = open(filename, "wb")
+    pickle.dump(block_list, fp)
+    fp.close()
+    return True
+
+def loadBlocks(filename):
+    fin = open(filename, "rb")
+    ret = pickle.load(fin)
+    fin.close()
+    return ret
+
 if __name__ == "__main__":
 
     import Signatures
@@ -98,6 +114,7 @@ if __name__ == "__main__":
 
     #Query balances
     new1 = getBalance(pu1)
+    print(new1)
     new2 = getBalance(pu2)
     new3 = getBalance(pu3)
 
