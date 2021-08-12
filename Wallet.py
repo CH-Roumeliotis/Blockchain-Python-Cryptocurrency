@@ -35,7 +35,6 @@ def walletServer(my_addr):
                         head_blocks.remove(b)
                         head_blocks.append(newBlock)
                         print("Added to head_blocks")
-                #TODO What if I add to an earlier (non-head) block?
     server.close()
     return True
         
@@ -123,4 +122,4 @@ if __name__ == "__main__":
     t2.join()
     t3.join()
 
-    print ("Exit successful.")
+    print ("Exit successful...")
