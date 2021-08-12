@@ -56,17 +56,36 @@ def verify(message, signature, pu_ser):
         return False
 
 def savePrivate(pr_key, filename):
-    return True
+    pem = pr_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+    fp = open(filename, "wb")
+    fp.write(pem)
+    fp.close()
+    return
 
 def loadPrivate(filename):
-    pr_key, pu_key = generate_keys()
+    fin = open(filename, "rb")
+    pr_key = serialization.load_pem_private_key(
+        fin.read(),
+        password=None,
+        backend=default_backend()
+    )
+    fin.close()
     return pr_key
 
 def savePublic(pu_key, filename):
+    fp = open(filename, "wb")
+    fp.write(pu_key)
+    fp.close()
     return True
 
 def loadPublic(filename):
-    pr_key, pu_key = generate_keys()
+    fin = open(filename, "rb")
+    pu_key = fin.read()
+    fin.close()
     return pu_key
 
 if __name__ == '__main__':
@@ -116,4 +135,4 @@ if __name__ == '__main__':
     if correct:
         print("Success! Good loaded public key")
     else:
-        print ("ERROR! Load public key is bad")
+        print ("ERROR! Load public key is Wrong")
