@@ -1,6 +1,7 @@
 #Wallet
 import SocketUtils
 import Transaction
+import Signatures
 import TxBlock
 import pickle
 
@@ -9,6 +10,8 @@ wallets = [('localhost',5006)]
 miners = [('localhost',5005)]
 break_now = False
 verbose = False
+my_public,my_private = Signatures.generate_keys()
+
 
 def walletServer(my_addr):
     global head_blocks
