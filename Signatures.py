@@ -126,7 +126,7 @@ if __name__ == '__main__':
     if correct:
         print("Success! Good loaded private key")
     else:
-        print ("ERROR! Load private key is bad")
+        print ("ERROR! Load private key is Wrong")
 
     savePublic(pu2, "public.key")
     pu_load = loadPublic("public.key")

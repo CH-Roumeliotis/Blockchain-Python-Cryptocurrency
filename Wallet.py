@@ -1,16 +1,13 @@
 #Wallet
 import SocketUtils
 import Transaction
-import Signatures
-import time
-import Miner
-import threading
 import TxBlock
 
 head_blocks = [None]
 wallets = [('localhost',5006)]
 miners = [('localhost',5005)]
 break_now = False
+verbose = False
 
 def walletServer(my_addr):
     global head_blocks
@@ -66,6 +63,11 @@ def sendCoins(pu_send, amt_send, pr_send, pu_recv, amt_recv, miner_list):
     return True
 
 if __name__ == "__main__":
+
+    import Signatures
+    import time
+    import Miner
+    import threading
     
     miner_pr, miner_pu = Signatures.generate_keys()
     t1 = threading.Thread(target=Miner.minerServer, args=(('localhost',5005),))
@@ -81,6 +83,7 @@ if __name__ == "__main__":
 
     #Query balances
     bal1 = getBalance(pu1)
+    print(bal1)
     bal2 = getBalance(pu2)
     bal3 = getBalance(pu3)
 
@@ -89,6 +92,10 @@ if __name__ == "__main__":
     sendCoins(pu1, 1.0, pr1, pu3, 0.3, miners)
 
     time.sleep(30)
+
+    #Save/Load all blocks
+    saveBlocks(head_blocks, "AllBlocks.dat")
+    head_blocks = loadBlocks("AllBlocks.dat")
 
     #Query balances
     new1 = getBalance(pu1)
@@ -109,8 +116,8 @@ if __name__ == "__main__":
     else:
         print("Success. Good balance for pu3")
 
-    Miner.break_now = True
-    break_now = True
+    Miner.StopAll()
+    StopAll()
     
     t1.join()
     t2.join()
