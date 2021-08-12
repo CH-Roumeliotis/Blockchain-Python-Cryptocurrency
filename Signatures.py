@@ -55,6 +55,20 @@ def verify(message, signature, pu_ser):
         print("Error Executing public key verify")
         return False
 
+def savePrivate(pr_key, filename):
+    return True
+
+def loadPrivate(filename):
+    pr_key, pu_key = generate_keys()
+    return pr_key
+
+def savePublic(pu_key, filename):
+    return True
+
+def loadPublic(filename):
+    pr_key, pu_key = generate_keys()
+    return pu_key
+
 if __name__ == '__main__':
     pr, pu = generate_keys()
     print(pr)
@@ -85,3 +99,21 @@ if __name__ == '__main__':
         print("ERROR...Tampered message")
     else:
         print("Success, Tampering detected")
+
+    savePrivate(pr2, "private.key")
+    pr_load = loadPrivate("private.key")
+    sig3 = sign(message, pr_load)
+    correct = verify(message, sig3, pu2)
+    if correct:
+        print("Success! Good loaded private key")
+    else:
+        print ("ERROR! Load private key is bad")
+
+    savePublic(pu2, "public.key")
+    pu_load = loadPublic("public.key")
+
+    correct = verify(message, sig3, pu_load)
+    if correct:
+        print("Success! Good loaded public key")
+    else:
+        print ("ERROR! Load public key is bad")

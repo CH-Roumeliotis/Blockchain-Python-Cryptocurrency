@@ -10,14 +10,17 @@ import time
 
 reward = 25.0 #25.0 is our block reward
 leading_zeros = 2
-next_char_limit = 20
+next_char_limit = 100
 
 class TxBlock(RBlock):
     nonce = "AAAAAAA"
+
     def __init__(self, previous):
         super(TxBlock, self).__init__([], previous)
+
     def addTx(self, Tx_in):
         self.data.append(Tx_in)
+
     def count_totals(self):
         total_in = 0
         total_out = 0
@@ -27,6 +30,7 @@ class TxBlock(RBlock):
             for addr,amt in tx.outputs:
                 total_out = total_out + amt
         return total_in, total_out
+
     def is_Valid(self):
         if not super(TxBlock, self).is_Valid():
             return False
@@ -37,6 +41,7 @@ class TxBlock(RBlock):
         if total_out - total_in - reward > 0.00000000001:
             return False
         return True
+
     def good_nonce(self):
         digest = hashes.Hash(hashes.SHA256(), backend = default_backend())
         digest.update(bytes(str(self.data), 'utf8'))
@@ -47,12 +52,28 @@ class TxBlock(RBlock):
         if this_hash[:leading_zeros] != bytes(''.join([ '\x4f' for i in range(leading_zeros)]),'utf8'):
             return False
         return int(this_hash[leading_zeros]) < next_char_limit
-    def find_nonce(self):
-        for i in range(100000):
+
+    def find_nonce(self,n_tries=1000000):
+        for i in range(n_tries):
             self.nonce = ''.join([chr(random.randint(0,255)) for i in range(10*leading_zeros)])
             if self.good_nonce():
                 return self.nonce
         return None
+    
+    def findLongestBlockchain(head_blocks):
+        longest = -1
+        long_head = None
+        for b in head_blocks:
+            current = b
+            this_len = 0
+            while current != None:
+                this_len = this_len + 1
+                current = current.previous
+            if this_len > longest:
+                long_head = b
+                longest = this_len
+        return long_head
+
 if __name__ == "__main__":
     pr1, pu1 = generate_keys()
     pr2, pu2 = generate_keys()
