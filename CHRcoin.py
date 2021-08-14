@@ -1,6 +1,7 @@
 import time
 import Wallet
 import Miner
+import TxBlock
 import threading
 import Signatures
 
@@ -29,46 +30,42 @@ def startMiner():
 
 def startWallet():
     global tWS
-    Wallet.my_private, Wallet.my_public = Signatures.loadKeys("private.key","public.key")
-    
     tWS = threading.Thread(target=Wallet.walletServer, args=((my_ip,5006),))
     tWS.start()
+    Wallet.my_private, Wallet.my_public = Signatures.loadKeys("private.key","public.key")
     return True
 
 def stopMiner():
     global tMS, tNF
     Miner.StopAll()
+    time.sleep(2)
     if tMS: tMS.join()
     if tNF: tNF.join()
-    tMS = None
-    tNF = None
     return True
 
 def stopWallet():
     global tWS
     Wallet.StopAll()
+    time.sleep(2)
     if tWS: tWS.join()
-    tWS = None
     return True
 
 def getBalance(pu_key):
     if not tWS:
-        print("Start the server by calling startWallet before checking balances")
+        print("Can't get balance. Please start walletServer first.")
         return 0.0
     return Wallet.getBalance(pu_key)
 
 def sendCoins(pu_recv, amt, tx_fee):
-    Wallet.sendCoins(Wallet.my_public, amt+tx_fee, Wallet.my_private, pu_recv,
-                     amt, miners)
+    Wallet.sendCoins(Wallet.my_public, amt+tx_fee, Wallet.my_private,
+                     pu_recv, amt)
     return True
 
 def makeNewKeys():
-    return None, None
-
-
-
-
-
+    Wallet.my_private, Wallet.my_public = Signatures.generate_keys()
+    Signatures.savePublic(Wallet.my_public, "public.key")
+    Signatures.savePrivate(Wallet.my_private, "private.key")
+    return None
 
 if __name__ == "__main__":
     startMiner()
@@ -77,7 +74,7 @@ if __name__ == "__main__":
     
     time.sleep(2)
     print(getBalance(Wallet.my_public))
-    sendCoins( other_public, 1.0, 0.1 )
+    sendCoins( other_public, 1.0, 0.001 )
     time.sleep(20)
     print(getBalance(other_public))
     print(getBalance(Wallet.my_public))
@@ -85,3 +82,7 @@ if __name__ == "__main__":
     time.sleep(1)
     stopWallet()
     stopMiner()
+
+    print(ord(TxBlock.findLongestBlockchain(Miner.head_blocks).previous.previous.nonce[0]))
+    print(ord(TxBlock.findLongestBlockchain(Miner.head_blocks).previous.nonce[0]))
+    print(ord(TxBlock.findLongestBlockchain(Miner.head_blocks).nonce[0]))

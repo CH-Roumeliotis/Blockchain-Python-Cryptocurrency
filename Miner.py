@@ -23,42 +23,53 @@ def minerServer(my_addr):
     except:
         print("No previous transactions. Starting new")
         tx_list = []
-    head_blocks=[None]
     my_ip, my_port = my_addr
     server = SocketUtils.newServerConnection(my_ip, my_port)
     # Get Transactions from wallets
     while not break_now:
         newTx = SocketUtils.recvObj(server)
         if isinstance(newTx,Transaction.Tx):
+            #TODO check transactions for goodness in nonceFinder?
+            #TODO check transactions for well-ordered indeces
+            #TODO order tx_list to make indeces well-ordered
+            duplicate = False
+            for addr,amt,inx in newTx.inputs:
+                for tx in tx_list:
+                    for addr2,amt2,inx2 in tx.inputs:
+                        if addr2 == addr and inx2 == inx:
+                            duplicate = True
+            if duplicate: break
             tx_list.append(newTx)
             if verbose:
-                print ("Received transaction")
-    if verbose:
-        print ("Saving " + str(len(tx_list)) + " transactions to Txs.dat")
-    saveTxList(tx_list,"Txs.dat")
+                print ("Received tx")
+            if verbose:
+                print ("tx_list contains " + str(len(tx_list)) + " transactions.")
+        elif isinstance(newTx,TxBlock.TxBlock):
+            pass #TODO add new Blocks to blockchain
+    if verbose: print("Saving " + str(len(tx_list)) + " transactions to Txs.dat")
+    saveTxList(tx_list, "Txs.dat")
     return False
 
 def nonceFinder(wallet_list, miner_public):
     global break_now
+    global head_blocks
+    # add Transactions to new block
     try:
         head_blocks = TxBlock.loadBlocks("AllBlocks.dat")
     except:
-        print("No previous blocks found. Starting fresh.")
-        head_blocks = TxBlock.loadBlocks("Genesis.dat")
-    # add Transactions to new block
+        head_blocks = TxBlock.loadBlocks("GenesisBlock.dat")
     while not break_now:
         newBlock = TxBlock.TxBlock(TxBlock.findLongestBlockchain(head_blocks))
-        placeholder = Transaction.Tx()
-        placeholder.add_output(miner_public,25.0)
-        newBlock.addTx(placeholder)
+        tmp = Transaction.Tx()
+        tmp.add_output(miner_public,25.0)
+        newBlock.addTx(tmp)
         for tx in tx_list:
             newBlock.addTx(tx)
             if not newBlock.check_size():
                 newBlock.removeTx(tx)
                 break
-        newBlock.removeTx(placeholder)
-        if verbose:
-            print("New block has " + str(len(newBlock.data)) + " transactions.")
+            
+        newBlock.removeTx(tmp)
         # Compute and add mining reward
         total_in,total_out = newBlock.count_totals()
         mine_reward = Transaction.Tx()
@@ -103,7 +114,7 @@ if __name__ == "__main__":
     import threading
     import time
     
-    my_pr, my_pu = Signatures.generate_keys()
+    my_pr, my_pu = Signatures.loadKeys("private.key","public.key")
     t1 = threading.Thread(target=minerServer, args=(('localhost',5005),))
     t2 = threading.Thread(target=nonceFinder, args=(wallets, my_pu))
     server = SocketUtils.newServerConnection('localhost',5006)

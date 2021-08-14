@@ -3,26 +3,16 @@ import SocketUtils
 import Transaction
 import Signatures
 import TxBlock
+import Miner
 import pickle
 
-def Thief(my_addr):
-    my_ip, my_port = my_addr
-    server = SocketUtils.newServerConnection(my_ip,my_port)
-    # Get Transactions from wallets
-    while not break_now:
-        newTx = SocketUtils.recvObj(server)
-        if isinstance(newTx,Transaction.Tx):
-            for ip,port in miners:
-                if not (ip == my_ip and port == my_port):
-                    SocketUtils.sendBlock(ip,newTx,port)
-
-Miner.saveTxList([], "Txs.dat")
 head_blocks = [None]
 wallets = [('localhost',5006)]
-miners = [('localhost',5005)]
+miners = [('localhost',5005),('localhost',5007)]
 break_now = False
 verbose = True
-my_public, my_private = Signatures.generate_keys()
+my_private,my_public = Signatures.generate_keys()
+tx_index = {}
 
 def StopAll():
     global break_now
@@ -30,16 +20,23 @@ def StopAll():
 
 def walletServer(my_addr):
     global head_blocks
+    global tx_index
     try:
-        head_blocks = TxBlock.loadBlocks("WalletBlocks.dat")
+        head_blocks = TxBlock.loadBlocks("AllBlocks.dat")
     except:
-        print("WS:No previous blocks found.")
-        head_blocks = TxBlock.loadBlocks("Genesis.dat")
+        head_blocks = TxBlock.loadBlocks("GenesisBlock.dat")
+    try:
+        fp = open("tx_index.dat","rb")
+        tx_index = pickle.load(fp)
+        fp.close()
+    except:
+        tx_index = {}
     server = SocketUtils.newServerConnection('localhost',5006)
     while not break_now:
         newBlock = SocketUtils.recvObj(server)
         if isinstance(newBlock,TxBlock.TxBlock):
-            if verbose: print("Received block")
+            if verbose:
+                print("Received block")
             for b in head_blocks:
                 if b == None:
                     if newBlock.previousHash == None:
@@ -49,7 +46,8 @@ def walletServer(my_addr):
                         else:
                             head_blocks.remove(b)
                             head_blocks.append(newBlock)
-                            if verbose: print("Added to head_blocks")
+                            if verbose:
+                                print("Added to head_blocks")
                 elif newBlock.previousHash == b.computeHash():
                     newBlock.previous = b
                     if not newBlock.is_Valid():
@@ -62,35 +60,48 @@ def walletServer(my_addr):
                     this_block = b
                     while this_block != None:
                         if newBlock.previousHash == this_block.previousHash:
-                            found = True
                             newBlock.previous = this_block.previous
                             if not newBlock in head_blocks:
                                 head_blocks.append(newBlock)
                                 if verbose: print("Added new sis block")
 
                         this_block = this_block.previousBlock
-                if not found:
-                    print ("ERROR! Couldn't find a parent for newBlock")
                     #TODO handle orphaned blocks
-    TxBlock.saveBlocks(head_blocks,"WalletBlocks.dat")
     server.close()
+    TxBlock.saveBlocks(head_blocks, "AllBlocks.dat")
+    fp = open("tx_index.dat", "wb")
+    pickle.dump(tx_index,fp)
+    fp.close()
     return True
         
 def getBalance(pu_key):
     long_chain = TxBlock.findLongestBlockchain(head_blocks)
     return TxBlock.getBalance(pu_key,long_chain)
 
-def sendCoins(pu_send, amt_send, pr_send, pu_recv, amt_recv, miner_list):
+def sendCoins(pu_send, amt_send, pr_send, pu_recv, amt_recv):
+    global tx_index
     newTx = Transaction.Tx()
-    newTx.add_input(pu_send, amt_send)
+    if not pu_send in tx_index:
+        tx_index[pu_send]=0
+    newTx.add_input(pu_send, amt_send, tx_index[pu_send])
     newTx.add_output(pu_recv, amt_recv)
-    newTx.signature(pr_send)    
-    for ip,port in miners:   
+    newTx.signature(pr_send)
+    for ip,port in miners:
         SocketUtils.sendBlock(ip,newTx,port)
+    tx_index[pu_send] = tx_index[pu_send] + 1
     return True
 
-def loadKeys(pr_file, pu_file):
-    return Signatures.loadPrivate(pr_file), Signatures.loadPublic(pu_file)
+def WalletStart():
+    #Load head_blocks, private and public keys
+    #Load miner list
+    #TODO load address book
+    #Start walletServer
+    return True
+
+def WalletStop():
+    #Save head_blocks
+    #Close threads
+    return True
 
 if __name__ == "__main__":
 
@@ -98,13 +109,26 @@ if __name__ == "__main__":
     import time
     import Miner
     import threading
+
+    def Thief(my_addr):
+        my_ip, my_port = my_addr
+        server = SocketUtils.newServerConnection(my_ip,my_port)
+        # Get Txs from wallets
+        while not break_now:
+            newTx = SocketUtils.recvObj(server)
+            if isinstance(newTx,Transaction.Tx):
+                for ip,port in miners:
+                    if not (ip==my_ip and port == my_port):
+                        SocketUtils.sendBlock(ip,newTx,port)
+                    
+        
+    Miner.saveTxList([],"Txs.dat")
     
     miner_pr, miner_pu = Signatures.generate_keys()
     t1 = threading.Thread(target=Miner.minerServer, args=(('localhost',5005),))
     t2 = threading.Thread(target=Miner.nonceFinder, args=(wallets, miner_pu))
     t3 = threading.Thread(target=walletServer, args=(('localhost',5006),))
     t1.start()
-    t2.start()
     t3.start()
 
     pr1,pu1 = loadKeys("private.key","public.key")
@@ -118,27 +142,28 @@ if __name__ == "__main__":
     bal3 = getBalance(pu3)
 
     #Send coins
-    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
-    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
-    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
-    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
-    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
-    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
-    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
-    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
-    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
-    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
-    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
-    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
-    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
-    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
-    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
-    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
-    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
-    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
-    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
-    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03)
 
+    t2.start()
     time.sleep(60)
 
     #Save/Load all blocks
@@ -171,6 +196,7 @@ if __name__ == "__main__":
     t4.start()
     sendCoins(pu2, 0.2, pr2, pu1, 0.2)
     time.sleep(20)
+    #Check balances
     newnew1 = getBalance(pu1)
     if abs(newnew1 - new1 - 0.2) > 0.000000001:
         print("ERROR! Duplicate Transactions accepted.")
@@ -179,20 +205,21 @@ if __name__ == "__main__":
 
     Miner.StopAll()
 
-    num_heads = len(head_blocks)
-    sis = TxBlock.TxBlock(head_blocks[0].previous.previous)
-    sis.previous = None
-    SocketUtils.sendBlock('localhost',sis,5006)
-    time.sleep(10)
-    if (len(head_blocks) == num_heads + 1):
-        print ("Success! New head_block created")
-    else:
-        print("ERROR! Failed to add sis block")
-        
-    StopAll()
-    
     t1.join()
     t2.join()
+
+    num_heads = len(head_blocks)
+    minus_two = head_blocks[0].previous.previous
+    newB = TxBlock.TxBlock(minus_two)
+    newB.previous = None
+    SocketUtils.sendBlock('localhost',newB,5006)
+    time.sleep(4)
+    if len(head_blocks) != num_heads + 1:
+        print("Error! Branch block should be head")
+    if head_blocks[-1].previous != minus_two:
+        print("Error! Branch block has wrong parent")
+        
+    StopAll()
     t3.join()
 
     print ("Exit successful...")
