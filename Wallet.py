@@ -22,7 +22,7 @@ def walletServer(my_addr):
         head_blocks = TxBlock.loadBlocks("WalletBlocks.dat")
     except:
         print("WS:No previous blocks found.")
-        head_blocks = [None]
+        head_blocks = TxBlock.loadBlocks("Genesis.dat")
     server = SocketUtils.newServerConnection('localhost',5006)
     while not break_now:
         newBlock = SocketUtils.recvObj(server)
@@ -46,7 +46,20 @@ def walletServer(my_addr):
                         head_blocks.remove(b)
                         head_blocks.append(newBlock)
                         if verbose: print("Added to head_blocks")
-                #TODO What if I add to an earlier (non-head) block?
+                else:
+                    this_block = b
+                    while this_block != None:
+                        if newBlock.previousHash == this_block.previousHash:
+                            found = True
+                            newBlock.previous = this_block.previous
+                            if not newBlock in head_blocks:
+                                head_blocks.append(newBlock)
+                                if verbose: print("Added new sis block")
+
+                        this_block = this_block.previousBlock
+                if not found:
+                    print ("ERROR! Couldn't find a parent for newBlock")
+                    #TODO handle orphaned blocks
     TxBlock.saveBlocks(head_blocks,"WalletBlocks.dat")
     server.close()
     return True
@@ -140,6 +153,17 @@ if __name__ == "__main__":
         print("Success. Good balance for pu3")
 
     Miner.StopAll()
+
+    num_heads = len(head_blocks)
+    sis = TxBlock.TxBlock(head_blocks[0].previous.previous)
+    sis.previous = None
+    SocketUtils.sendBlock('localhost',sis,5006)
+    time.sleep(10)
+    if (len(head_blocks) == num_heads + 1):
+        print ("Success! New head_block created")
+    else:
+        print("ERROR! Failed to add sis block")
+        
     StopAll()
     
     t1.join()

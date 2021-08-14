@@ -21,7 +21,7 @@ def minerServer(my_addr):
         tx_list = loadTxList("Txs.dat")
         if verbose: print("Loaded tx_list has " + str(len(tx_list)) + " transactions.")
     except:
-        print("No previous transactions. Starting fresh")
+        print("No previous transactions. Starting new")
         tx_list = []
     head_blocks=[None]
     my_ip, my_port = my_addr
@@ -31,8 +31,10 @@ def minerServer(my_addr):
         newTx = SocketUtils.recvObj(server)
         if isinstance(newTx,Transaction.Tx):
             tx_list.append(newTx)
-            if verbose: print ("Received transaction")
-    if verbose: print ("Saving " + str(len(tx_list)) + " transactions to Txs.dat")
+            if verbose:
+                print ("Received transaction")
+    if verbose:
+        print ("Saving " + str(len(tx_list)) + " transactions to Txs.dat")
     saveTxList(tx_list,"Txs.dat")
     return False
 
@@ -42,7 +44,7 @@ def nonceFinder(wallet_list, miner_public):
         head_blocks = TxBlock.loadBlocks("AllBlocks.dat")
     except:
         print("No previous blocks found. Starting fresh.")
-        head_blocks = [None]
+        head_blocks = TxBlock.loadBlocks("Genesis.dat")
     # add Transactions to new block
     while not break_now:
         newBlock = TxBlock.TxBlock(TxBlock.findLongestBlockchain(head_blocks))
@@ -55,6 +57,8 @@ def nonceFinder(wallet_list, miner_public):
                 newBlock.removeTx(tx)
                 break
         newBlock.removeTx(placeholder)
+        if verbose:
+            print("New block has " + str(len(newBlock.data)) + " transactions.")
         # Compute and add mining reward
         total_in,total_out = newBlock.count_totals()
         mine_reward = Transaction.Tx()
