@@ -30,9 +30,6 @@ def minerServer(my_addr):
     while not break_now:
         newObj = SocketUtils.recvObj(server)
         if isinstance(newObj,Transaction.Tx):
-            #TODO check transactions for goodness in nonceFinder?
-            #TODO check transactions for well-ordered indeces
-            #TODO order tx_list to make indeces well-ordered
             duplicate = False
             for addr,amt,inx in newObj.inputs:
                 for tx in tx_list:
