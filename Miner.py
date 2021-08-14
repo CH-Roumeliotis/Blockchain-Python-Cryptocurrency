@@ -17,6 +17,12 @@ def StopAll():
 def minerServer(my_addr):
     global tx_list
     global break_now
+    try:
+        tx_list = loadTxList("Txs.dat")
+        if verbose: print("Loaded tx_list has " + str(len(tx_list)) + " transactions.")
+    except:
+        print("No previous transactions. Starting fresh")
+        tx_list = []
     head_blocks=[None]
     my_ip, my_port = my_addr
     server = SocketUtils.newServerConnection(my_ip,my_port)
@@ -26,6 +32,8 @@ def minerServer(my_addr):
         if isinstance(newTx,Transaction.Tx):
             tx_list.append(newTx)
             if verbose: print ("Received transaction")
+    if verbose: print ("Saving " + str(len(tx_list)) + " transactions to Txs.dat")
+    saveTxList(tx_list,"Txs.dat")
     return False
 
 def nonceFinder(wallet_list, miner_public):
@@ -58,6 +66,7 @@ def nonceFinder(wallet_list, miner_public):
             for tx in newBlock.data:
                 if tx != mine_reward:
                     tx_list.remove(tx)
+    TxBlock.saveBlocks(head_blocks,"AllBlocks.dat")
     return True
 
 def loadTxList(filename):
@@ -113,14 +122,14 @@ if __name__ == "__main__":
             SocketUtils.sendBlock('localhost',tx)
             print ("Sent Transaction")
         except:
-            print ("Error! Connection Fail")
+            print ("ERROR! Connection Fail")
 
     for i in range(30):
         newBlock = SocketUtils.recvObj(server)
         if newBlock:
             break
 
-    if newBlock.is_valid():
+    if newBlock.is_Valid():
         print("Success, Block is valid")
     if newBlock.good_nonce():
         print("Success, Nonce is valid")

@@ -114,11 +114,13 @@ if __name__ == "__main__":
         else:
             print("ERROR")
 
+    #Wrong signatures
     Tx4 = Tx()
     Tx4.add_input(pu1, 1)
     Tx4.add_output(pu2, 1)
     Tx4.signature(pr2)
 
+    #Escrow
     Tx5 = Tx()
     Tx5.add_input(pu3, 1.2)
     Tx5.add_output(pu1, 1.1)
@@ -134,6 +136,6 @@ if __name__ == "__main__":
     
     for t in [Tx4, Tx5, Tx6]:
         if t.is_Valid():
-            print("Succeed")
+            print("ERROR, Tx is valid")
         else:
-            print("ERROR")
+            print("Succeed, invalid Tx")

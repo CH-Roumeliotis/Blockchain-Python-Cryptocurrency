@@ -12,15 +12,22 @@ break_now = False
 verbose = False
 my_public,my_private = Signatures.generate_keys()
 
+def StopAll():
+    global break_now
+    break_now = True
 
 def walletServer(my_addr):
     global head_blocks
-    head_blocks = [None]
+    try:
+        head_blocks = TxBlock.loadBlocks("WalletBlocks.dat")
+    except:
+        print("WS:No previous blocks found. Starting fresh.")
+        head_blocks = [None]
     server = SocketUtils.newServerConnection('localhost',5006)
     while not break_now:
         newBlock = SocketUtils.recvObj(server)
         if isinstance(newBlock,TxBlock.TxBlock):
-            print("Received block")
+            if verbose: print("Received block")
             for b in head_blocks:
                 if b == None:
                     if newBlock.previousHash == None:
@@ -30,7 +37,7 @@ def walletServer(my_addr):
                         else:
                             head_blocks.remove(b)
                             head_blocks.append(newBlock)
-                            print("Added to head_blocks")
+                            if verbose: print("Added to head_blocks")
                 elif newBlock.previousHash == b.computeHash():
                     newBlock.previous = b
                     if not newBlock.is_Valid():
@@ -38,7 +45,9 @@ def walletServer(my_addr):
                     else:
                         head_blocks.remove(b)
                         head_blocks.append(newBlock)
-                        print("Added to head_blocks")
+                        if verbose: print("Added to head_blocks")
+                #TODO What if I add to an earlier (non-head) block?
+    TxBlock.saveBlocks(head_blocks,"WalletBlocks.dat")
     server.close()
     return True
         
@@ -68,18 +77,6 @@ def sendCoins(pu_send, amt_send, pr_send, pu_recv, amt_recv, miner_list):
 def loadKeys(pr_file, pu_file):
     return Signatures.loadPrivate(pr_file), Signatures.loadPublic(pu_file)
 
-def saveBlocks(block_list, filename):
-    fp = open(filename, "wb")
-    pickle.dump(block_list, fp)
-    fp.close()
-    return True
-
-def loadBlocks(filename):
-    fin = open(filename, "rb")
-    ret = pickle.load(fin)
-    fin.close()
-    return ret
-
 if __name__ == "__main__":
 
     import Signatures
@@ -95,7 +92,7 @@ if __name__ == "__main__":
     t2.start()
     t3.start()
 
-    pr1,pu1 = Signatures.generate_keys()
+    pr1,pu1 = loadKeys("private.key","public.key")
     pr2,pu2 = Signatures.generate_keys()
     pr3,pu3 = Signatures.generate_keys()
 
@@ -112,8 +109,8 @@ if __name__ == "__main__":
     time.sleep(30)
 
     #Save/Load all blocks
-    saveBlocks(head_blocks, "AllBlocks.dat")
-    head_blocks = loadBlocks("AllBlocks.dat")
+    TxBlock.saveBlocks(head_blocks, "AllBlocks.dat")
+    head_blocks = TxBlock.loadBlocks("AllBlocks.dat")
 
     #Query balances
     new1 = getBalance(pu1)

@@ -1,38 +1,65 @@
 import time
 import Wallet
+import Miner
+import threading
+import Signatures
 
 wallets=[]
 miners=[]
 my_ip = 'localhost'
+wallets.append((my_ip,5006))
+miners.append((my_ip,5005))
+
+tMS = None
+tNF = None
+tWS = None
 
 def startMiner():
-    #Start nonceFinder
-    #Start minerServer
-    #Load tx_list
-    #Load head_blocks
-    #Load public_key
+    global tMS,tNF
+    try:
+        my_pu = Signatures.loadPublic("public.key")
+    except:
+        print("No public.key Need to generate?")
+        pass #TODO
+    tMS = threading.Thread(target=Miner.minerServer, args=((my_ip, 5005),))
+    tNF = threading.Thread(target=Miner.nonceFinder, args=(wallets, my_pu))
+    tMS.start()
+    tNF.start()
     return True
+
 def startWallet():
-    #Start walletServer
-    #Load public and private keys
-    #Load head_blocsk
+    global tWS
+    Wallet.my_private, Wallet.my_public = Signatures.loadKeys("private.key","public.key")
+    
+    tWS = threading.Thread(target=Wallet.walletServer, args=((my_ip,5006),))
+    tWS.start()
     return True
 
 def stopMiner():
-    #Stop nonceFinder
-    #Stop minerServer
-    #Save tx_list
-    #Save head_blocks
+    global tMS, tNF
+    Miner.StopAll()
+    if tMS: tMS.join()
+    if tNF: tNF.join()
+    tMS = None
+    tNF = None
     return True
+
 def stopWallet():
-    #Stop walletServer
-    #Save head_blocks
+    global tWS
+    Wallet.StopAll()
+    if tWS: tWS.join()
+    tWS = None
     return True
 
 def getBalance(pu_key):
-    return 0.0
+    if not tWS:
+        print("Start the server by calling startWallet before checking balances")
+        return 0.0
+    return Wallet.getBalance(pu_key)
 
 def sendCoins(pu_recv, amt, tx_fee):
+    Wallet.sendCoins(Wallet.my_public, amt+tx_fee, Wallet.my_private, pu_recv,
+                     amt, miners)
     return True
 
 def makeNewKeys():
@@ -51,6 +78,7 @@ if __name__ == "__main__":
     time.sleep(2)
     print(getBalance(Wallet.my_public))
     sendCoins( other_public, 1.0, 0.1 )
+    time.sleep(20)
     print(getBalance(other_public))
     print(getBalance(Wallet.my_public))
 

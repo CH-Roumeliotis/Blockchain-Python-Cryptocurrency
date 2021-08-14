@@ -60,19 +60,31 @@ class TxBlock(RBlock):
                 return self.nonce
         return None
     
-    def findLongestBlockchain(head_blocks):
-        longest = -1
-        long_head = None
-        for b in head_blocks:
-            current = b
-            this_len = 0
-            while current != None:
-                this_len = this_len + 1
-                current = current.previous
-            if this_len > longest:
-                long_head = b
-                longest = this_len
-        return long_head
+def findLongestBlockchain(head_blocks):
+    longest = -1
+    long_head = None
+    for b in head_blocks:
+        current = b
+        this_len = 0
+        while current != None:
+            this_len = this_len + 1
+            current = current.previous
+        if this_len > longest:
+            long_head = b
+            longest = this_len
+    return long_head
+    
+def saveBlocks(block_list, filename):
+    fp = open(filename, "wb")
+    pickle.dump(block_list, fp)
+    fp.close()
+    return True
+
+def loadBlocks(filename):
+    fin = open(filename, "rb")
+    ret = pickle.load(fin)
+    fin.close()
+    return ret
 
 if __name__ == "__main__":
     pr1, pu1 = generate_keys()
