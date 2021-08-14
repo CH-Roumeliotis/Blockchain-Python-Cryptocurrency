@@ -53,18 +53,7 @@ def walletServer(my_addr):
         
 def getBalance(pu_key):
     long_chain = TxBlock.findLongestBlockchain(head_blocks)
-    this_block = long_chain
-    bal = 0.0
-    while this_block != None:
-        for tx in this_block.data:
-            for addr,amt in tx.inputs:
-                if addr == pu_key:
-                    bal = bal - amt
-            for addr,amt in tx.outputs:
-                if addr == pu_key:
-                    bal = bal + amt
-        this_block = this_block.previous
-    return bal
+    return TxBlock.getBalance(pu_key,long_chain)
 
 def sendCoins(pu_send, amt_send, pr_send, pu_recv, amt_recv, miner_list):
     newTx = Transaction.Tx()

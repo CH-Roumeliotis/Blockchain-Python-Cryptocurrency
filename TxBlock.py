@@ -11,6 +11,7 @@ import time
 reward = 25.0 #25.0 is our block reward
 leading_zeros = 2
 next_char_limit = 100
+verbose = True
 
 class TxBlock(RBlock):
     nonce = "AAAAAAA"
@@ -49,9 +50,27 @@ class TxBlock(RBlock):
     def is_Valid(self):
         if not super(TxBlock, self).is_Valid():
             return False
+        
+        spends={}
         for tx in self.data:
             if not tx.is_Valid():
                 return False
+            for addr,amt in tx.inputs:
+                if addr in spends:
+                    spends[addr] = spends[addr] + amt
+                else:
+                    spends[addr] = amt
+            for addr,amt in tx.outputs:
+                if addr in spends:
+                    spends[addr] = spends[addr] - amt
+                else:
+                    spends[addr] = -amt
+        for this_addr in spends:
+            if verbose: print ("Balance: " + str(getBalance(this_addr,self.previous)))
+            if verbose: print ("Spends: " + str(spends[this_addr]))
+            if spends[this_addr] - getBalance(this_addr,self.previous) > 0.000000001:
+                return False
+            
         total_in, total_out = self.count_totals()
         if total_out - total_in - reward > 0.00000000001:
             return False
@@ -102,6 +121,20 @@ def loadBlocks(filename):
     ret = pickle.load(fin)
     fin.close()
     return ret
+
+def getBalance(pu_key,last_block):
+    this_block = last_block
+    bal = 0.0
+    while this_block != None:
+        for tx in this_block.data:
+            for addr,amt in tx.inputs:
+                if addr == pu_key:
+                    bal = bal - amt
+            for addr,amt in tx.outputs:
+                if addr == pu_key:
+                    bal = bal + amt
+        this_block = this_block.previous
+    return bal
 
 if __name__ == "__main__":
     pr1, pu1 = generate_keys()
