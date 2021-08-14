@@ -55,6 +55,8 @@ class TxBlock(RBlock):
         total_in, total_out = self.count_totals()
         if total_out - total_in - reward > 0.00000000001:
             return False
+        if not self.check_size():
+            return False
         return True
 
     def good_nonce(self):

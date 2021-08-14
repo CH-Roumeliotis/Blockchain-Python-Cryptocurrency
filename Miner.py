@@ -38,11 +38,23 @@ def minerServer(my_addr):
 
 def nonceFinder(wallet_list, miner_public):
     global break_now
+    try:
+        head_blocks = TxBlock.loadBlocks("AllBlocks.dat")
+    except:
+        print("No previous blocks found. Starting fresh.")
+        head_blocks = [None]
     # add Transactions to new block
     while not break_now:
         newBlock = TxBlock.TxBlock(TxBlock.findLongestBlockchain(head_blocks))
+        placeholder = Transaction.Tx()
+        placeholder.add_output(miner_public,25.0)
+        newBlock.addTx(placeholder)
         for tx in tx_list:
             newBlock.addTx(tx)
+            if not newBlock.check_size():
+                newBlock.removeTx(tx)
+                break
+        newBlock.removeTx(placeholder)
         # Compute and add mining reward
         total_in,total_out = newBlock.count_totals()
         mine_reward = Transaction.Tx()

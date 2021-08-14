@@ -21,7 +21,7 @@ def walletServer(my_addr):
     try:
         head_blocks = TxBlock.loadBlocks("WalletBlocks.dat")
     except:
-        print("WS:No previous blocks found. Starting fresh.")
+        print("WS:No previous blocks found.")
         head_blocks = [None]
     server = SocketUtils.newServerConnection('localhost',5006)
     while not break_now:
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
     sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
 
-    time.sleep(30)
+    time.sleep(150)
 
     #Save/Load all blocks
     TxBlock.saveBlocks(head_blocks, "AllBlocks.dat")
