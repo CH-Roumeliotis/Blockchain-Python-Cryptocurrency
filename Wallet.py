@@ -5,6 +5,18 @@ import Signatures
 import TxBlock
 import pickle
 
+def Thief(my_addr):
+    my_ip, my_port = my_addr
+    server = SocketUtils.newServerConnection(my_ip,my_port)
+    # Get Transactions from wallets
+    while not break_now:
+        newTx = SocketUtils.recvObj(server)
+        if isinstance(newTx,Transaction.Tx):
+            for ip,port in miners:
+                if not (ip == my_ip and port == my_port):
+                    SocketUtils.sendBlock(ip,newTx,port)
+
+Miner.saveTxList([], "Txs.dat")
 head_blocks = [None]
 wallets = [('localhost',5006)]
 miners = [('localhost',5005)]
@@ -73,7 +85,8 @@ def sendCoins(pu_send, amt_send, pr_send, pu_recv, amt_recv, miner_list):
     newTx.add_input(pu_send, amt_send)
     newTx.add_output(pu_recv, amt_recv)
     newTx.signature(pr_send)    
-    SocketUtils.sendBlock('localhost',newTx)
+    for ip,port in miners:   
+        SocketUtils.sendBlock(ip,newTx,port)
     return True
 
 def loadKeys(pr_file, pu_file):
@@ -126,7 +139,7 @@ if __name__ == "__main__":
     sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
     sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
 
-    time.sleep(150)
+    time.sleep(60)
 
     #Save/Load all blocks
     TxBlock.saveBlocks(head_blocks, "AllBlocks.dat")
@@ -151,6 +164,18 @@ if __name__ == "__main__":
         print("ERROR! Wrong balance for pu3")
     else:
         print("Success. Good balance for pu3")
+
+    #Thief will try to duplicate transactions
+    miners.append(('localhost',5007))
+    t4 = threading.Thread(target=Thief, args=(('localhost',5007),))
+    t4.start()
+    sendCoins(pu2, 0.2, pr2, pu1, 0.2)
+    time.sleep(20)
+    newnew1 = getBalance(pu1)
+    if abs(newnew1 - new1 - 0.2) > 0.000000001:
+        print("ERROR! Duplicate Transactions accepted.")
+    else:
+        print("Success! Duplicate Transactions rejected.")
 
     Miner.StopAll()
 
