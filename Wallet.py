@@ -3,7 +3,6 @@ import SocketUtils
 import Transaction
 import Signatures
 import TxBlock
-import Miner
 import pickle
 
 head_blocks = [None]
@@ -35,41 +34,10 @@ def walletServer(my_addr):
     while not break_now:
         newBlock = SocketUtils.recvObj(server)
         if isinstance(newBlock,TxBlock.TxBlock):
-            if verbose:
-                print("Received block")
-            for b in head_blocks:
-                if b == None:
-                    if newBlock.previousHash == None:
-                        newBlock.previous = b
-                        if not newBlock.is_Valid():
-                            print("ERROR! newBlock is not valid")
-                        else:
-                            head_blocks.remove(b)
-                            head_blocks.append(newBlock)
-                            if verbose:
-                                print("Added to head_blocks")
-                elif newBlock.previousHash == b.computeHash():
-                    newBlock.previous = b
-                    if not newBlock.is_Valid():
-                        print("ERROR! newBlock is not valid")
-                    else:
-                        head_blocks.remove(b)
-                        head_blocks.append(newBlock)
-                        if verbose: print("Added to head_blocks")
-                else:
-                    this_block = b
-                    while this_block != None:
-                        if newBlock.previousHash == this_block.previousHash:
-                            newBlock.previous = this_block.previous
-                            if not newBlock in head_blocks:
-                                head_blocks.append(newBlock)
-                                if verbose: print("Added new sis block")
-
-                        this_block = this_block.previousBlock
-                    #TODO handle orphaned blocks
+            TxBlock.processNewBlock(newBlock,head_blocks)
     server.close()
     TxBlock.saveBlocks(head_blocks, "AllBlocks.dat")
-    fp = open("tx_index.dat", "wb")
+    fp = open("tx_index.dat","wb")
     pickle.dump(tx_index,fp)
     fp.close()
     return True
@@ -215,9 +183,9 @@ if __name__ == "__main__":
     SocketUtils.sendBlock('localhost',newB,5006)
     time.sleep(4)
     if len(head_blocks) != num_heads + 1:
-        print("Error! Branch block should be head")
+        print("ERROR! Branch block should be head")
     if head_blocks[-1].previous != minus_two:
-        print("Error! Branch block has wrong parent")
+        print("ERROR! Branch block has wrong parent")
         
     StopAll()
     t3.join()

@@ -10,8 +10,7 @@ import time
 
 reward = 25.0 #25.0 is our block reward
 leading_zeros = 2
-next_char_limit = 100
-verbose = True
+next_char_limit = 255
 
 class TxBlock(RBlock):
     nonce = "AAAAAAA"
@@ -23,10 +22,11 @@ class TxBlock(RBlock):
         self.data.append(Tx_in)
 
     def removeTx(self, Tx_in):
-        if Tx_in in self.data:
+        try:
             self.data.remove(Tx_in)
-            return True
-        return False
+        except:
+            return False
+        return True
 
     def count_totals(self):
         total_in = 0
@@ -41,34 +41,51 @@ class TxBlock(RBlock):
     def check_size(self):
         savePrev = self.previous
         self.previous = None
-        this_size = len(pickle.dumps(self))
-        self.previous = savePrev
-        if this_size > 10000:
+        if len(pickle.dumps(self)) > 10000:
+            self.previous = savePrev
             return False
+        self.previous = savePrev
         return True
 
     def is_Valid(self):
         if not super(TxBlock, self).is_Valid():
+            print ("RBlock.is_Valid returned False")
             return False
-        
         spends={}
         for tx in self.data:
             if not tx.is_Valid():
+                print ("Tx invalid")
+                print (tx)
                 return False
-            for addr,amt in tx.inputs:
-                if addr in spends:
-                    spends[addr] = spends[addr] + amt
-                else:
+            for addr,amt,inx in tx.inputs:
+                if not addr in spends:
                     spends[addr] = amt
-            for addr,amt in tx.outputs:
-                if addr in spends:
-                    spends[addr] = spends[addr] - amt
                 else:
+                    spends[addr] = spends[addr] + amt
+                if not inx-1 == getLastTxIndex(addr,self.previous):
+                    found = False
+                    count = 0
+                    for tx2 in self.data:
+                        for addr2,amt2,inx2 in tx2.inputs:
+                            if addr == addr2 and inx2 == inx-1:
+                                found=True
+                            if addr == addr2 and inx2 == inx:
+                                count = count + 1
+                    if not found or count > 1:
+                        print("Transaction index out of order")
+                        return False
+            for addr,amt in tx.outputs:
+                if not addr in spends:
                     spends[addr] = -amt
-        for this_addr in spends:
-            if verbose: print ("Balance: " + str(getBalance(this_addr,self.previous)))
-            if verbose: print ("Spends: " + str(spends[this_addr]))
-            if spends[this_addr] - getBalance(this_addr,self.previous) > 0.000000001:
+                else:
+                    spends[addr] = spends[addr] - amt
+        for addr in spends:
+            if self.previous == None:
+                if spends[addr] > 0:
+                    print("Can't spend in root block")
+                    return False
+            if spends[addr] - getBalance(addr,self.previous) > 0.0000000001:
+                print("Overspend for address: " + str(addr))
                 return False
             
         total_in, total_out = self.count_totals()
@@ -95,6 +112,34 @@ class TxBlock(RBlock):
             if self.good_nonce():
                 return self.nonce
         return None
+
+def getBalance(pu_key,head_block):
+    this_block = head_block
+    bal = 0.0
+    while this_block != None:
+        for tx in this_block.data:
+            for addr,amt,inx in tx.inputs:
+                if addr == pu_key:
+                    bal = bal - amt
+            for addr,amt in tx.outputs:
+                if addr == pu_key:
+                    bal = bal + amt
+        this_block = this_block.previous
+    return bal
+
+
+def getLastTxIndex(pu_key,head_block):
+    this_block = head_block
+    index = -1
+    while this_block != None:
+        for tx in this_block.data:
+            for addr,amt,inx in tx.inputs:
+                if addr == pu_key and inx > index:
+                    index = inx
+        if index != -1:
+            break
+        this_block = this_block.previous
+    return index
     
 def findLongestBlockchain(head_blocks):
     longest = -1
@@ -122,27 +167,21 @@ def loadBlocks(filename):
     fin.close()
     return ret
 
-def getBalance(pu_key,last_block):
-    this_block = last_block
-    bal = 0.0
-    while this_block != None:
-        for tx in this_block.data:
-            for addr,amt in tx.inputs:
-                if addr == pu_key:
-                    bal = bal - amt
-            for addr,amt in tx.outputs:
-                if addr == pu_key:
-                    bal = bal + amt
-        this_block = this_block.previous
-    return bal
-
 if __name__ == "__main__":
     pr1, pu1 = generate_keys()
     pr2, pu2 = generate_keys()
     pr3, pu3 = generate_keys()
 
+    pu_indeces = {}
+    
+    def indexed_input(Tx_inout, public_key, amt, index_map):
+        if not public_key in index_map:
+            index_map[public_key] = 0            
+        Tx_inout.add_input(public_key, amt, index_map[public_key])
+        index_map[public_key] = index_map[public_key] + 1
+
     Tx1 = Tx()
-    Tx1.add_input(pu1, 1)
+    indexed_input(Tx1, pu1, 1, pu_indeces)
     Tx1.add_output(pu2, 1)
     Tx1.signature(pr1)
 
@@ -181,16 +220,19 @@ if __name__ == "__main__":
     loadFile.close()
 
     root = TxBlock(None)
-    mine1 = Tx()
-    mine1.add_output(pu1,8.0)
-    mine1.add_output(pu2,8.0)
-    mine1.add_output(pu3,8.0)
-    
     root.addTx(Tx1)
-    root.addTx(mine1)
+    Txmine = Tx()
+    Txmine.add_output(pu1,8.0)
+    root.addTx(Txmine)
+    Txmine = Tx()
+    Txmine.add_output(pu2,8.0)
+    root.addTx(Txmine)
+    Txmine = Tx()
+    Txmine.add_output(pu3,8.0)
+    root.addTx(Txmine)
 
     Tx2 = Tx()
-    Tx2.add_input(pu2, 1.1)
+    indexed_input(Tx2, pu2, 1.1, pu_indeces)
     Tx2.add_output(pu3, 1)
     Tx2.signature(pr2)
     root.addTx(Tx2)
@@ -198,13 +240,13 @@ if __name__ == "__main__":
     B1 = TxBlock(root)
     
     Tx3 = Tx()
-    Tx3.add_input(pu3, 1.1)
+    indexed_input(Tx3, pu3, 1.1, pu_indeces)
     Tx3.add_output(pu1, 1)
     Tx3.signature(pr3)
     B1.addTx(Tx3)
 
     Tx4 = Tx()
-    Tx4.add_input(pu1, 1)
+    indexed_input(Tx4, pu1, 1, pu_indeces)
     Tx4.add_output(pu2, 1)
     Tx4.add_Req_Signatures(pu3)
     Tx4.signature(pr1)
@@ -250,7 +292,7 @@ if __name__ == "__main__":
 
     B2 = TxBlock(B1)
     Tx5 = Tx()
-    Tx5.add_input(pu3, 1)
+    indexed_input(Tx5, pu3, 1, pu_indeces)
     Tx5.add_output(pu1, 100)
     Tx5.signature(pr3)
     B2.addTx(Tx5)
@@ -264,103 +306,159 @@ if __name__ == "__main__":
         else:
             print("Succeed, unverified blocks detected")
 
-#Test mining reward
+    # Test mining rewards and tx fees
     pr4, pu4 = generate_keys()
     B3 = TxBlock(B2)
+    Tx2 = Tx()
+    indexed_input(Tx2, pu2, 1.1, pu_indeces)
+    Tx2.add_output(pu3, 1)
+    Tx2.signature(pr2)
+    Tx3 = Tx()
+    indexed_input(Tx3, pu3, 1.1, pu_indeces)
+    Tx3.add_output(pu1, 1)
+    Tx3.signature(pr3)
+    Tx4 = Tx()
+    indexed_input(Tx4, pu1, 1, pu_indeces)
+    Tx4.add_output(pu2, 1)
+    Tx4.add_Req_Signatures(pu3)
+    Tx4.signature(pr1)
+    Tx4.signature(pr3)
     B3.addTx(Tx2)
     B3.addTx(Tx3)
     B3.addTx(Tx4)
     Tx6 = Tx()
-    Tx6.add_output(pu4, 25) #miner' s public key
+    Tx6.add_output(pu4,25)
     B3.addTx(Tx6)
-    
     if B3.is_Valid():
-        print("Success! Wrong Blocks detected")
+        print ("Success! Block reward succeeds")
     else:
         print("ERROR! Block reward fail")
 
     B4 = TxBlock(B3)
+    Tx2 = Tx()
+    indexed_input(Tx2, pu2, 1.1, pu_indeces)
+    Tx2.add_output(pu3, 1)
+    Tx2.signature(pr2)
+    Tx3 = Tx()
+    indexed_input(Tx3, pu3, 1.1, pu_indeces)
+    Tx3.add_output(pu1, 1)
+    Tx3.signature(pr3)
+    Tx4 = Tx()
+    indexed_input(Tx4, pu1, 1, pu_indeces)
+    Tx4.add_output(pu2, 1)
+    Tx4.add_Req_Signatures(pu3)
+    Tx4.signature(pr1)
+    Tx4.signature(pr3)
     B4.addTx(Tx2)
     B4.addTx(Tx3)
     B4.addTx(Tx4)
     Tx7 = Tx()
-    Tx7.add_output(pu4, 25.2)
+    Tx7.add_output(pu4,25.2)
     B4.addTx(Tx7)
-    
     if B4.is_Valid():
-        print("Success! Tx fees succeeds")
+        print ("Success! Tx fees succeeds")
     else:
         print("ERROR! Tx fees fail")
-        
-#Greedy miner
+
+    #Greedy miner
     B5 = TxBlock(B4)
+    Tx2 = Tx()
+    indexed_input(Tx2, pu2, 1.1, pu_indeces)
+    Tx2.add_output(pu3, 1)
+    Tx2.signature(pr2)
+    Tx3 = Tx()
+    indexed_input(Tx3, pu3, 1.1, pu_indeces)
+    Tx3.add_output(pu1, 1)
+    Tx3.signature(pr3)
+    Tx4 = Tx()
+    indexed_input(Tx4, pu1, 1, pu_indeces)
+    Tx4.add_output(pu2, 1)
+    Tx4.add_reqd(pu3)
+    Tx4.signature(pr1)
+    Tx4.signature(pr3)
     B5.addTx(Tx2)
     B5.addTx(Tx3)
     B5.addTx(Tx4)
     Tx8 = Tx()
-    Tx8.add_output(pu4, 26.2)
+    Tx8.add_output(pu4,26.2)
     B5.addTx(Tx8)
-    
     if not B5.is_Valid():
-        print("Success! Greedy miner detected")
+        print ("Success! Greedy miner detected")
     else:
         print("ERROR! Greedy miner not detected")
 
-    B6 = TxBlock(B4)
-    this_pu = pu4
-    this_pr = pr4
-    for i in range(30):
+    print("pu4 bal:")
+    print(getBalance(pu4,B5))
+    B6 = TxBlock(B5)
+    lastpr = pr4
+    lastpu = pu4
+    lastval = 3.789
+    for i in range(20):
+        newpr, newpu = generate_keys()
         newTx = Tx()
-        new_pr, new_pu = generate_keys()
-        newTx.add_input(this_pu,0.3)
-        newTx.add_output(new_pu,0.3)
-        newTx.signature(this_pr)
+        indexed_input(newTx, lastpu, lastval, pu_indeces)
+        newTx.add_output(newpu,lastval-0.02)
+        newTx.add_output(pu4,0.02)
+        newTx.signature(lastpr)
+        lastpr = newpr
+        lastpu = newpu
+        lastval = lastval-0.02
         B6.addTx(newTx)
-        this_pu, this_pr = new_pu, new_pr
         savePrev = B6.previous
         B6.previous = None
-        this_size = len(pickle.dumps(B6))
-        B6.previous = savePrev              
-        if B6.is_Valid() and this_size > 10000:
-            print ("ERROR! Big blocks are valid: size = ", str(this_size))
-        elif (not B6.is_Valid ) and this_size <= 10000:
-            print ("ERROR! Small blocks are invalid: size = ", str(this_size))
-        else:
-            print ("Success! Block passed.")
+        if len(pickle.dumps(B6)) > 10000:
+            B6.previous = savePrev
+            if B6.is_Valid():
+                print("Error! Big blocks are valid")
+        if len(pickle.dumps(B6)) <= 10000:
+            B6.previous = savePrev
+            if not B6.is_Valid():
+                print("Error! Small blocks are invalid")
+        B6.previous = savePrev
+    pu_indeces[pu4] = pu_indeces[pu4] - 1
 
-    overspend = Tx()
-    overspend.add_input(pu1,45.0)
-    overspend.add_output(pu2,44.5)
-    overspend.signature(pr1)
-    B7 = TxBlock(B4)
-    B7.addTx(overspend)
-    if B7.is_Valid():
-        print("ERROR! Overspend not detected")
+    print("pu1 bal:")
+    print(getBalance(pu1,B5))
+    B7 = TxBlock(B5)
+    Tx9 = Tx()
+    indexed_input(Tx9, pu1, 25, pu_indeces)
+    indexed_input(Tx9, pu1, 25, pu_indeces)
+    indexed_input(Tx9, pu1, 25, pu_indeces)
+    indexed_input(Tx9, pu1, 25, pu_indeces)
+    indexed_input(Tx9, pu1, 25, pu_indeces)
+    indexed_input(Tx9, pu1, 25, pu_indeces)
+    Tx9.signature(pr1)
+    B7.addTx(Tx9)
+    if not B7.is_valid():
+        print ("Success! Overspend detected")
     else:
-        print("Success! Overspend detected")
-
-    overspend1 = Tx()
-    overspend1.add_input(pu1,5.0)
-    overspend1.add_output(pu2,4.5)
-    overspend1.signature(pr1)
-    overspend2 = Tx()
-    overspend2.add_input(pu1,15.0)
-    overspend2.add_output(pu3,14.5)
-    overspend2.signature(pr1)
-    overspend3 = Tx()
-    overspend3.add_input(pu1,5.0)
-    overspend3.add_output(pu4,4.5)
-    overspend3.signature(pr1)
-    overspend4 = Tx()
-    overspend4.add_input(pu1,8.0)
-    overspend4.add_output(pu2,4.5)
-    overspend4.signature(pr1)
-    B8 = TxBlock(B4)
-    B8.addTx(overspend1)
-    B8.addTx(overspend2)
-    B8.addTx(overspend3)
-    B8.addTx(overspend4)
-    if B8.is_Valid():
-        print("ERROR! Overspend not detected")
+        print("ERROR! Over-spend not detected")
+    
+    print("pu1 bal:")
+    print(getBalance(pu1,B5))
+    pu_indeces[pu1] = pu_indeces[pu1] - 6
+    B8 = TxBlock(B5)
+    Tx9 = Tx()
+    indexed_input(Tx9, pu1, 30, pu_indeces)
+    Tx9.add_output(pu2,30)
+    Tx9.signature(pr1)
+    B8.addTx(Tx9)
+    Tx10 = Tx()
+    indexed_input(Tx10, pu1, 30, pu_indeces)
+    Tx10.add_output(pu2,30)
+    Tx10.signature(pr1)
+    B8.addTx(Tx10)
+    Tx11 = Tx()
+    indexed_input(Tx11, pu1, 30, pu_indeces)
+    Tx11.add_output(pu2,30)
+    Tx11.signature(pr1)
+    B8.addTx(Tx11)
+    Tx12 = Tx()
+    indexed_input(Tx12, pu1, 30, pu_indeces)
+    Tx12.add_output(pu2,30)
+    Tx12.signature(pr1)
+    B8.addTx(Tx12)
+    if not B8.is_Valid():
+        print ("Success! Overspend detected")
     else:
-        print("Success! Overspend detected")
+        print("ERROR! Over-spend not detected")

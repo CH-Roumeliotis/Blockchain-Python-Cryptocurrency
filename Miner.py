@@ -17,35 +17,42 @@ def StopAll():
 def minerServer(my_addr):
     global tx_list
     global break_now
+    global head_blocks
     try:
         tx_list = loadTxList("Txs.dat")
-        if verbose: print("Loaded tx_list has " + str(len(tx_list)) + " transactions.")
+        if verbose: print ("Loaded tx_list has " +str(len(tx_list))+" Txs.")
     except:
-        print("No previous transactions. Starting new")
-        tx_list = []
+        print("No previous tx_list found. Starting new")
+        tx_list = []         
     my_ip, my_port = my_addr
-    server = SocketUtils.newServerConnection(my_ip, my_port)
+    server = SocketUtils.newServerConnection(my_ip,my_port)
     # Get Transactions from wallets
     while not break_now:
-        newTx = SocketUtils.recvObj(server)
-        if isinstance(newTx,Transaction.Tx):
+        newObj = SocketUtils.recvObj(server)
+        if isinstance(newObj,Transaction.Tx):
             #TODO check transactions for goodness in nonceFinder?
             #TODO check transactions for well-ordered indeces
             #TODO order tx_list to make indeces well-ordered
             duplicate = False
-            for addr,amt,inx in newTx.inputs:
+            for addr,amt,inx in newObj.inputs:
                 for tx in tx_list:
                     for addr2,amt2,inx2 in tx.inputs:
                         if addr2 == addr and inx2 == inx:
                             duplicate = True
             if duplicate: break
-            tx_list.append(newTx)
+            tx_list.append(newObj)
             if verbose:
                 print ("Received tx")
             if verbose:
                 print ("tx_list contains " + str(len(tx_list)) + " transactions.")
-        elif isinstance(newTx,TxBlock.TxBlock):
-            pass #TODO add new Blocks to blockchain
+        elif isinstance(newObj,TxBlock.TxBlock):
+            print("Received new block")
+            TxBlock.processNewBlock(newObj,head_blocks,True)
+            for tx in newObj.data:
+                if tx in tx_list:
+                    tx_list.remove(tx)
+        else:
+            print ("Received " + str(type(newObj)))
     if verbose: print("Saving " + str(len(tx_list)) + " transactions to Txs.dat")
     saveTxList(tx_list, "Txs.dat")
     return False
@@ -80,14 +87,17 @@ def nonceFinder(wallet_list, miner_public):
         newBlock.find_nonce(10000)
         if newBlock.good_nonce():
             if verbose: print ("Good nonce found")
+            if not newBlock.previous in head_blocks:
+                break
             head_blocks.remove(newBlock.previous)
             head_blocks.append(newBlock)
+            # Send new block
             # Send new block
             savePrev = newBlock.previous
             newBlock.previous = None
             for ip_addr,port in wallet_list:
                 if verbose: print ("Sending to " + ip_addr + ":" + str(port))
-                SocketUtils.sendBlock(ip_addr,newBlock,5006)
+                SocketUtils.sendBlock(ip_addr,newBlock,port)
             newBlock.previous = savePrev
             # Remove used txs from tx_list
             for tx in newBlock.data:
