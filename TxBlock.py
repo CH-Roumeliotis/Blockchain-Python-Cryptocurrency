@@ -148,7 +148,13 @@ if __name__ == "__main__":
     loadFile.close()
 
     root = TxBlock(None)
+    mine1 = Tx()
+    mine1.add_output(pu1,8.0)
+    mine1.add_output(pu2,8.0)
+    mine1.add_output(pu3,8.0)
+    
     root.addTx(Tx1)
+    root.addTx(mine1)
 
     Tx2 = Tx()
     Tx2.add_input(pu2, 1.1)
@@ -288,3 +294,40 @@ if __name__ == "__main__":
             print ("ERROR! Small blocks are invalid: size = ", str(this_size))
         else:
             print ("Success! Block passed.")
+
+    overspend = Tx()
+    overspend.add_input(pu1,45.0)
+    overspend.add_output(pu2,44.5)
+    overspend.signature(pr1)
+    B7 = TxBlock(B4)
+    B7.addTx(overspend)
+    if B7.is_Valid():
+        print("ERROR! Overspend not detected")
+    else:
+        print("Success! Overspend detected")
+
+    overspend1 = Tx()
+    overspend1.add_input(pu1,5.0)
+    overspend1.add_output(pu2,4.5)
+    overspend1.signature(pr1)
+    overspend2 = Tx()
+    overspend2.add_input(pu1,15.0)
+    overspend2.add_output(pu3,14.5)
+    overspend2.signature(pr1)
+    overspend3 = Tx()
+    overspend3.add_input(pu1,5.0)
+    overspend3.add_output(pu4,4.5)
+    overspend3.signature(pr1)
+    overspend4 = Tx()
+    overspend4.add_input(pu1,8.0)
+    overspend4.add_output(pu2,4.5)
+    overspend4.signature(pr1)
+    B8 = TxBlock(B4)
+    B8.addTx(overspend1)
+    B8.addTx(overspend2)
+    B8.addTx(overspend3)
+    B8.addTx(overspend4)
+    if B8.is_Valid():
+        print("ERROR! Overspend not detected")
+    else:
+        print("Success! Overspend detected")
