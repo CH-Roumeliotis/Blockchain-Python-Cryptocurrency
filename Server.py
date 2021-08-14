@@ -22,7 +22,7 @@ def recvObj(socket):
     return pickle.loads(all_data)
 
 if __name__ == "__main__":
-    s = newConnection('localhost')
+    s = newConnection('192.168.2.111')
     newB = recvObj(s)
     print (newB.data[0])
     print (newB.data[1])

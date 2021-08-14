@@ -9,8 +9,8 @@ head_blocks = [None]
 wallets = [('localhost',5006)]
 miners = [('localhost',5005)]
 break_now = False
-verbose = False
-my_public,my_private = Signatures.generate_keys()
+verbose = True
+my_public, my_private = Signatures.generate_keys()
 
 def StopAll():
     global break_now
@@ -103,8 +103,26 @@ if __name__ == "__main__":
     bal3 = getBalance(pu3)
 
     #Send coins
-    sendCoins(pu1, 1.0, pr1, pu2, 1.0, miners)
-    sendCoins(pu1, 1.0, pr1, pu3, 0.3, miners)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
+    sendCoins(pu1, 0.1, pr1, pu2, 0.1, miners)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
+    sendCoins(pu1, 0.1, pr1, pu3, 0.03, miners)
 
     time.sleep(30)
 

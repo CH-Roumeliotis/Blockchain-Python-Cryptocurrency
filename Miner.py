@@ -25,7 +25,7 @@ def minerServer(my_addr):
         tx_list = []
     head_blocks=[None]
     my_ip, my_port = my_addr
-    server = SocketUtils.newServerConnection(my_ip,my_port)
+    server = SocketUtils.newServerConnection(my_ip, my_port)
     # Get Transactions from wallets
     while not break_now:
         newTx = SocketUtils.recvObj(server)

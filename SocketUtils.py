@@ -8,7 +8,7 @@ BUFFER_SIZE=1024
 
 def newServerConnection(ip_addr, port=TCP_PORT):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind((ip_addr,port))
+    s.bind((ip_addr, port))
     s.listen()
     return s
 

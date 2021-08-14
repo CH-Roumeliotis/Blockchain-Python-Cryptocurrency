@@ -21,6 +21,12 @@ class TxBlock(RBlock):
     def addTx(self, Tx_in):
         self.data.append(Tx_in)
 
+    def removeTx(self, Tx_in):
+        if Tx_in in self.data:
+            self.data.remove(Tx_in)
+            return True
+        return False
+
     def count_totals(self):
         total_in = 0
         total_out = 0
@@ -30,6 +36,15 @@ class TxBlock(RBlock):
             for addr,amt in tx.outputs:
                 total_out = total_out + amt
         return total_in, total_out
+
+    def check_size(self):
+        savePrev = self.previous
+        self.previous = None
+        this_size = len(pickle.dumps(self))
+        self.previous = savePrev
+        if this_size > 10000:
+            return False
+        return True
 
     def is_Valid(self):
         if not super(TxBlock, self).is_Valid():
@@ -248,4 +263,26 @@ if __name__ == "__main__":
     if not B5.is_Valid():
         print("Success! Greedy miner detected")
     else:
-        print("ERROR! Greedy miner not detected")      
+        print("ERROR! Greedy miner not detected")
+
+    B6 = TxBlock(B4)
+    this_pu = pu4
+    this_pr = pr4
+    for i in range(30):
+        newTx = Tx()
+        new_pr, new_pu = generate_keys()
+        newTx.add_input(this_pu,0.3)
+        newTx.add_output(new_pu,0.3)
+        newTx.signature(this_pr)
+        B6.addTx(newTx)
+        this_pu, this_pr = new_pu, new_pr
+        savePrev = B6.previous
+        B6.previous = None
+        this_size = len(pickle.dumps(B6))
+        B6.previous = savePrev              
+        if B6.is_Valid() and this_size > 10000:
+            print ("ERROR! Big blocks are valid: size = ", str(this_size))
+        elif (not B6.is_Valid ) and this_size <= 10000:
+            print ("ERROR! Small blocks are invalid: size = ", str(this_size))
+        else:
+            print ("Success! Block passed.")

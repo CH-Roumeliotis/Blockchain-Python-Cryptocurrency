@@ -52,7 +52,7 @@ def verify(message, signature, pu_ser):
     except InvalidSignature:
         return False
     except:
-        print("Error Executing public key verify")
+        print("ERROR Executing public key verify")
         return False
 
 def savePrivate(pr_key, filename):
